@@ -1,0 +1,41 @@
+name: Build C# Application
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    # 1. Клонирование репозитория
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    # 2. Установка MSBuild (компилятор C#)
+    - name: Setup MSBuild
+      uses: microsoft/setup-msbuild@v2
+
+    # 3. Установка NuGet
+    - name: Setup NuGet
+      uses: NuGet/setup-nuget@v2
+
+    # 4. Восстановление зависимостей
+    # Ищем .sln файл в корне и восстанавливаем пакеты для него
+    - name: Restore NuGet Packages
+      run: nuget restore curseuch.sln
+
+    # 5. Сборка решения в Release режиме
+    - name: Build Solution
+      run: msbuild curseuch.sln /p:Configuration=Release /p:Platform="Any CPU"
+
+    # 6. Архивация результата (чтобы можно было скачать exe)
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: Curseuch-Application
+        path: curseuch/bin/Release/*.exe
+        retention-days: 7
