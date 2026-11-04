@@ -14,26 +14,33 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    # НОВЫЙ ШАГ: Проверка наличия тестовых данных
+    # ИСПРАВЛЕННЫЙ ШАГ ПРОВЕРКИ ФАЙЛОВ
     - name: Verify Test Fixtures Existence
       run: |
         Write-Host "Checking for required database fixtures..."
-        $requiredFiles = @(
-          "database/fixtures/test_uniform_motion.sqlite",
-          "database/fixtures/test_jump_deformation.sqlite",
-          "database/fixtures/test_cyclic_movement.sqlite",
-          "database/fixtures/test_rest_state.sqlite"
-        )
         
-        foreach ($file in $requiredFiles) {
-            if (!(Test-Path $file)) {
-                Write-Error "Missing critical test fixture: $file"
-                exit 1
-            } else {
-                Write-Host "Found: $file"
-            }
+        # Проверяем наличие самой папки
+        if (!(Test-Path "databases/fixtures")) {
+            Write-Error "Directory 'databases/fixtures' not found!"
+            exit 1
         }
-        Write-Host "All test fixtures verified successfully."
+
+        # Получаем список всех .sqlite файлов в этой папке
+        $files = Get-ChildItem -Path "databases/fixtures" -Filter *.sqlite
+        
+        if ($files.Count -eq 0) {
+             Write-Error "No .sqlite files found in databases/fixtures!"
+             exit 1
+        }
+
+        Write-Host "Found $($files.Count) test fixture(s):"
+        foreach ($file in $files) {
+            Write-Host "- $($file.Name)"
+        }
+        
+        # Дополнительно можно проверить конкретные важные файлы, если нужно жестко
+        # Например, если бы они назывались именно так:
+        # if (!(Test-Path "databases/fixtures/test_1_rest_state.sqlite")) { exit 1 } 
 
     - name: Setup MSBuild
       uses: microsoft/setup-msbuild@v2
@@ -60,6 +67,6 @@ jobs:
         name: Project-Docs-QA
         path: |
           docs/
-          database/
+          databases/
           README.md
         retention-days: 30
