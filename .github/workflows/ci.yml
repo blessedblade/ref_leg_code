@@ -1,4 +1,4 @@
-name: Build C# Application
+name: Build & Verify Data Integrity
 
 on:
   push:
@@ -7,35 +7,59 @@ on:
     branches: [ main ]
 
 jobs:
-  build:
+  build-and-test:
     runs-on: windows-latest
 
     steps:
-    # 1. Клонирование репозитория
     - name: Checkout code
       uses: actions/checkout@v4
 
-    # 2. Установка MSBuild (компилятор C#)
+    # НОВЫЙ ШАГ: Проверка наличия тестовых данных
+    - name: Verify Test Fixtures Existence
+      run: |
+        Write-Host "Checking for required database fixtures..."
+        $requiredFiles = @(
+          "database/fixtures/test_uniform_motion.sqlite",
+          "database/fixtures/test_jump_deformation.sqlite",
+          "database/fixtures/test_cyclic_movement.sqlite",
+          "database/fixtures/test_rest_state.sqlite"
+        )
+        
+        foreach ($file in $requiredFiles) {
+            if (!(Test-Path $file)) {
+                Write-Error "Missing critical test fixture: $file"
+                exit 1
+            } else {
+                Write-Host "Found: $file"
+            }
+        }
+        Write-Host "All test fixtures verified successfully."
+
     - name: Setup MSBuild
       uses: microsoft/setup-msbuild@v2
 
-    # 3. Установка NuGet
     - name: Setup NuGet
       uses: NuGet/setup-nuget@v2
 
-    # 4. Восстановление зависимостей
-    # Ищем .sln файл в корне и восстанавливаем пакеты для него
     - name: Restore NuGet Packages
       run: nuget restore curseuch.sln
 
-    # 5. Сборка решения в Release режиме
     - name: Build Solution
       run: msbuild curseuch.sln /p:Configuration=Release /p:Platform="Any CPU"
 
-    # 6. Архивация результата (чтобы можно было скачать exe)
-    - name: Upload Artifact
+    - name: Upload Build Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: Curseuch-Application
+        name: Curseuch-App-Release
         path: curseuch/bin/Release/*.exe
         retention-days: 7
+        
+    - name: Upload Docs and Tests
+      uses: actions/upload-artifact@v4
+      with:
+        name: Project-Docs-QA
+        path: |
+          docs/
+          database/
+          README.md
+        retention-days: 30
